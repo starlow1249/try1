@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="he">
+<head>
+  <meta charset="UTF-8">
+  <title>כניסה למצגות</title>
+  <style>
+    body { font-family: Arial, sans-serif; direction: rtl; text-align: center; margin: 30px; }
+    input, button { padding: 10px; margin: 10px; font-size: 16px; }
+    iframe { width: 90%; height: 500px; margin-top: 20px; border: 1px solid #ccc; }
+    .doc-title { font-weight: bold; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h2>כניסה למצגות לפי פרשה</h2>
+  <input type="password" id="password" placeholder="הכנס סיסמה">
+  <input type="text" id="parasha" placeholder="הכנס שם פרשה">
+  <button onclick="checkAccess()">הצג מסמכים</button>
+
+  <div id="results"></div>
+
+  <script>
+    const sheetId = '1YWCM1uctEsK-504WkMSdsBm5y56GBwRB3Hy_r1OYXuI';
+    const apiKey = 'AIzaSyClmkLxcxXdKkrmGVY2fjTsVgf31RcMS_4';
+    const range = 'A2:D100';
+
+    async function checkAccess() {
+      const inputPassword = document.getElementById('password').value.trim();
+      const inputParasha = document.getElementById('parasha').value.trim();
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML = '';
+
+      try {
+        const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?key=${apiKey}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        const rows = data.values;
+        const password = rows[0][0];
+
+        if (inputPassword !== password) {
+          resultsDiv.innerHTML = '<p style="color:red;">סיסמה שגויה</p>';
+          return;
+        }
+
+        const matchingDocs = rows.filter(row => row[1] === inputParasha);
+
+        if (matchingDocs.length === 0) {
+          resultsDiv.innerHTML = '<p>לא נמצאו מסמכים לפרשה הזו.</p>';
+        } else {
+          matchingDocs.forEach(row => {
+            const docName = row[2];
+            const docLink = row[3];
+
+            // המרה לקישור הטמעה אם צריך
+            let embedLink = docLink;
+
+            // Google Docs
+            if (docLink.includes('docs.google.com/document/d/')) {
+              const docId = docLink.split('/d/')[1].split('/')[0];
+              embedLink = `https://docs.google.com/document/d/${docId}/preview`;
+            }
+
+            // Google Slides
+            if (docLink.includes('docs.google.com/presentation/d/')) {
+              const docId = docLink.split('/d/')[1].split('/')[0];
+              embedLink = `https://docs.google.com/presentation/d/${docId}/embed?start=false&loop=false&delayms=3000`;
+            }
+
+            const title = document.createElement('div');
+            title.className = 'doc-title';
+            title.textContent = docName;
+
+            const iframe = document.createElement('iframe');
+            iframe.src = embedLink;
+
+            resultsDiv.appendChild(title);
+            resultsDiv.appendChild(iframe);
+          });
+        }
+      } catch (error) {
+        resultsDiv.innerHTML = '<p style="color:red;">אירעה שגיאה בטעינת הנתונים.</p>';
+        console.error(error);
+      }
+    }
+  </script>
+</body>
+</html>
